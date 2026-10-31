@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hikvision ISAPI Control Panel</title>
+<style>
+:root{
+  --bg:#0e1318;--panel:#151c23;--panel2:#1b242d;--line:#283440;--line2:#33424f;
+  --text:#dbe3ea;--muted:#8a99a8;--dim:#5f6f7e;--accent:#2fb5a5;--accent2:#24907f;
+  --get:#3fb27f;--put:#e0a63a;--post:#4a9be8;--del:#e2554f;--ok:#3fb27f;--bad:#e2554f;--warn:#e0a63a;
+  --mono:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{background:var(--bg);border:1px solid var(--line2);border-radius:6px;padding:6px 8px;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+button{cursor:pointer;border:1px solid var(--line2);background:var(--panel2);border-radius:6px;padding:6px 10px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent2);border-color:var(--accent2);color:#fff;font-weight:600}
+button.primary:hover{background:var(--accent)}
+button.danger{background:#5a1f1d;border-color:#7a2b28}
+label{color:var(--muted);font-size:11px;display:flex;flex-direction:column;gap:3px}
+.app{display:grid;grid-template-rows:auto 1fr auto;height:100vh}
+header{display:flex;align-items:center;gap:16px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:220px}
+.logo{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,var(--accent),#1d6f9c);display:grid;place-items:center;font-weight:800;color:#fff;font-size:13px}
+.brand h1{font-size:15px;margin:0;font-weight:650}
+.brand small{display:block;color:var(--muted);font-size:11px}
+.conn{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;flex:1}
+.conn input{width:120px}
+.conn input[type=checkbox]{width:auto}.conn #ip{width:150px}.conn #port{width:70px}
+.devbadge{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.pill{padding:2px 8px;border-radius:999px;background:var(--panel2);border:1px solid var(--line2);font-size:11px;white-space:nowrap}
+.pill.ok{border-color:#2c6b52;color:#8fe0bd}.pill.bad{border-color:#7a2b28;color:#f2a29e}
+.params{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;padding:8px 14px;background:#121920;border-bottom:1px solid var(--line)}
+.params input[type=number]{width:70px}
+.params input[type=datetime-local]{width:190px}
+.params .chk{flex-direction:row;align-items:center;gap:6px;color:var(--text);font-size:12px;padding-bottom:6px}
+main{display:grid;grid-template-columns:210px 1fr 470px;min-height:0}
+nav{border-right:1px solid var(--line);overflow:auto;padding:8px}
+nav input{width:100%;margin-bottom:8px}
+nav .cat{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;border:none;background:none;padding:7px 9px;border-radius:6px;color:var(--muted)}
+nav .cat:hover{background:var(--panel2);color:var(--text)}
+nav .cat.active{background:var(--panel2);color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+nav .cat span{font-size:11px;color:var(--dim)}
+.cmds{overflow:auto;padding:12px 14px}
+.cmds h2{font-size:14px;margin:0 0 4px}
+.cmds .sub{color:var(--muted);font-size:12px;margin:0 0 12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.cmd{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:9px 10px;background:var(--panel);border:1px solid var(--line);border-radius:8px;min-height:64px}
+.cmd:hover{border-color:var(--accent);background:var(--panel2)}
+.cmd .top{display:flex;gap:6px;align-items:center;width:100%}
+.cmd .lbl{font-weight:600;font-size:12.5px;flex:1}
+.cmd .path{font-family:var(--mono);font-size:10.5px;color:var(--muted);word-break:break-all}
+.cmd.dz{border-color:#4d2523}
+.m{font-family:var(--mono);font-size:10px;font-weight:700;padding:1px 5px;border-radius:4px;color:#0e1318}
+.m-GET{background:var(--get)}.m-PUT{background:var(--put)}.m-POST{background:var(--post)}.m-DELETE{background:var(--del)}
+.tag{font-size:9.5px;padding:1px 5px;border-radius:4px;border:1px solid var(--line2);color:var(--muted)}
+.tag.warn{border-color:#7a2b28;color:#f2a29e}
+.special{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+.special h3{margin:0 0 8px;font-size:13px}
+.ptzwrap{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.pad{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(3,52px);gap:6px}
+.pad button,.lens button{font-size:18px;padding:0;user-select:none;touch-action:none}
+.pad button:active,.lens button:active{background:var(--accent2)}
+.lens{display:grid;grid-template-columns:auto 52px 52px;gap:6px;align-items:center}
+.lens button{height:40px;font-size:15px}
+.lens span{color:var(--muted);font-size:12px;padding-right:6px}
+.ptzstat{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:8px}
+.rtsp{display:grid;grid-template-columns:110px 1fr auto;gap:6px 8px;align-items:center;font-size:12px}
+.rtsp code{font-family:var(--mono);font-size:11px;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:5px 7px;word-break:break-all}
+aside{border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+.editor{padding:10px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.editor .row{display:flex;gap:6px}
+.editor #method{width:92px}
+.editor #path{flex:1;font-family:var(--mono);font-size:12px}
+.editor textarea{width:100%;height:120px;resize:vertical;font-family:var(--mono);font-size:11.5px}
+.editor .hint{font-size:11px;color:var(--warn);min-height:14px}
+.resp{flex:1;display:flex;flex-direction:column;min-height:0}
+.rhead{display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.rhead .status{font-family:var(--mono);font-weight:700}
+.rhead .meta{color:var(--muted);font-size:11px;flex:1}
+.tabs{display:flex;gap:4px}
+.tabs button{padding:3px 8px;font-size:11px}
+.tabs button.on{border-color:var(--accent);color:var(--accent)}
+.tabs{flex-wrap:wrap}
+#dl a{color:inherit;text-decoration:none}
+.rbody{flex:1;overflow:auto;padding:10px;min-height:0}
+.rbody pre{margin:0;font-family:var(--mono);font-size:11.5px;white-space:pre-wrap;word-break:break-word}
+.rbody img{max-width:100%;border-radius:6px;border:1px solid var(--line)}
+.summary{border-radius:6px;padding:7px 10px;margin-bottom:8px;font-size:12px}
+.summary.ok{background:#173326;border:1px solid #2c6b52}
+.summary.bad{background:#3a1918;border:1px solid #7a2b28}
+.t{color:#6fb6e8}.a{color:#e0a63a}.v{color:#9fd8a6}
+.HIST{max-height:150px;overflow:auto;border-top:1px solid var(--line)}
+.HIST .hh{padding:6px 10px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;position:sticky;top:0;background:var(--bg)}
+.HIST div.it{display:flex;gap:6px;align-items:center;padding:3px 10px;font-family:var(--mono);font-size:10.5px;cursor:pointer;color:var(--muted)}
+.HIST div.it:hover{background:var(--panel2);color:var(--text)}
+.HIST .code{margin-left:auto}
+.c2{color:var(--ok)}.c4,.c5,.cE{color:var(--bad)}
+footer{padding:5px 14px;border-top:1px solid var(--line);font-size:11px;color:var(--dim);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.banner{background:#3a2a10;border-bottom:1px solid #6b4e1a;color:#f2d29e;padding:8px 14px;font-size:12px;display:none}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;place-items:center;z-index:10}
+.modal .box{background:var(--panel);border:1px solid var(--line2);border-radius:10px;padding:18px;width:min(460px,92vw)}
+.modal h3{margin:0 0 8px;color:#f2a29e}
+.modal p{color:var(--muted);margin:0 0 6px}
+.modal code{font-family:var(--mono);font-size:11.5px;display:block;background:var(--bg);padding:6px 8px;border-radius:5px;margin:8px 0;word-break:break-all}
+.modal .btns{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.empty{color:var(--dim);font-size:12px;padding:20px;text-align:center}
+main.wide{grid-template-columns:210px 1fr 58%}
+.rt{font-size:14px;font-weight:650;margin:0 0 8px}
+.dim{color:var(--muted);font-size:11px}
+.mono{font-family:var(--mono);font-size:11px;word-break:break-all}
+table.kv{width:100%;border-collapse:collapse;margin-bottom:6px}
+table.kv td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+table.kv td:first-child{color:var(--muted);width:42%;font-size:12px}
+.tw{overflow:auto;border:1px solid var(--line);border-radius:6px;margin-bottom:8px}
+table.lt{border-collapse:collapse;width:100%;font-size:12px}
+table.lt th{position:sticky;top:0;background:var(--panel2);text-align:left;font-weight:600;color:var(--muted);font-size:11px;padding:5px 7px;white-space:nowrap;border-bottom:1px solid var(--line2)}
+table.lt td{padding:5px 7px;border-bottom:1px solid var(--line);vertical-align:top}
+table.lt tr:hover td{background:var(--panel)}
+.sec{margin:6px 0 8px}
+details.sec{border:1px solid var(--line);border-radius:6px;padding:0 8px}
+details.sec>summary{cursor:pointer;padding:6px 0;font-weight:600;font-size:12.5px}
+details.sec[open]>summary{border-bottom:1px solid var(--line);margin-bottom:4px}
+.st{font-weight:600;font-size:12.5px;margin:2px 0 6px}
+.chip{display:inline-block;padding:1px 7px;border-radius:999px;font-size:11px;border:1px solid var(--line2);margin:1px 0}
+.chip.g{background:#173326;border-color:#2c6b52;color:#8fe0bd}
+.chip.r{background:#3a1918;border-color:#7a2b28;color:#f2a29e}
+.chip.n{background:var(--panel2);color:var(--text)}
+.chip.s{border-style:dashed;color:var(--muted);background:none}
+.evbar{display:flex;gap:12px;align-items:center;margin-bottom:8px}
+.evbar .chk,.armbar .chk{flex-direction:row;align-items:center;gap:5px;color:var(--text);font-size:12px}
+.armbar{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin:8px 0}
+.armlinks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 12px;margin:6px 0 10px}
+.armlinks label{flex-direction:row;align-items:center;gap:6px;color:var(--text);font-size:12px}
+.armbtn{font-weight:700;padding:8px 16px}
+.armbtn.arm{background:#5a1f1d;border-color:#a33a35}
+.armbtn.dis{background:#173326;border-color:#2c6b52}
+.armlog{font-family:var(--mono);font-size:11px;color:var(--muted);max-height:140px;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;margin-top:8px;white-space:pre-wrap}
+.armstate{font-size:22px;font-weight:800;letter-spacing:.5px}
+.pickbtn{padding:6px 10px;white-space:nowrap}
+.chpop{position:fixed;z-index:50;background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:8px;width:340px;max-height:60vh;overflow:auto;box-shadow:0 10px 36px rgba(0,0,0,.55)}
+.chpop .hd{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.chpop .cpr{padding:6px 9px}
+.chrow{display:flex;gap:8px;align-items:center;padding:5px 7px;border-radius:6px;cursor:pointer;border:1px solid transparent}
+.chrow:hover{background:var(--panel2);border-color:var(--line2)}
+.chrow .num{font-family:var(--mono);font-size:11px;width:28px;color:var(--muted);text-align:right}
+.chrow .nm{flex:1;font-size:12.5px}
+.chrow .ty{font-size:10px;color:var(--dim)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dot.on{background:var(--ok)}.dot.off{background:var(--bad)}.dot.na{background:var(--dim)}
+@media (max-width:1150px){main{grid-template-columns:180px 1fr}aside{grid-column:1/-1;border-left:none;border-top:1px solid var(--line);min-height:420px}.app{height:auto}main{min-height:0}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div>
+    <div class="banner" id="banner">Helper not detected. Start <b>hik_isapi_tool.py</b> and open <b>http://127.0.0.1:8088</b>. Opening this HTML file on its own can't reach a recorder, because the browser blocks it.</div>
+    <header>
+      <div class="brand"><div class="logo">API</div><div><h1>Hikvision ISAPI Control Panel</h1><small>DVR / NVR / IP camera command console</small></div></div>
+      <div class="conn">
+        <label>Saved devices<select id="profiles"><option value="">—</option></select></label>
+        <label>Protocol<select id="scheme"><option>http</option><option>https</option></select></label>
+        <label>IP / Host<input id="ip" placeholder="192.168.1.64" autocomplete="off"></label>
+        <label>Port<input id="port" placeholder="80"></label>
+        <label>Username<input id="user" value="admin" autocomplete="off"></label>
+        <label>Password<input id="pass" type="password" autocomplete="new-password"></label>
+        <label class="chk" style="flex-direction:row;align-items:center;gap:5px;color:var(--text);padding-bottom:6px"><input type="checkbox" id="remember"> Save password</label>
+        <button class="primary" id="btnConnect">Connect / Test</button>
+        <button id="btnSave" title="Save this device to the list">Save</button>
+        <button id="btnDel" title="Remove selected device">✕</button>
+      </div>
+      <div class="devbadge" id="devbadge"><span class="pill">Not connected</span></div>
+    </header>
+    <div class="params" id="params">
+      <label>Channel<input type="number" id="pCh" value="1" min="1"></label><button id="pPick" class="pickbtn" title="Pick a camera from the device" style="margin-bottom:6px">Pick ▾</button>
+      <label>Stream<select id="pStream"><option value="1">01 Main</option><option value="2">02 Sub</option><option value="3">03 Third</option></select></label>
+      <label>Preset<input type="number" id="pPreset" value="1" min="1"></label>
+      <label>Patrol<input type="number" id="pPatrol" value="1" min="1"></label>
+      <label>HDD<input type="number" id="pHdd" value="1" min="1"></label>
+      <label>User ID<input type="number" id="pUid" value="2" min="1"></label>
+      <label>Alarm I/O<input type="number" id="pIo" value="1" min="1"></label>
+      <label>Search start<input type="datetime-local" id="pStart" step="1"></label>
+      <label>Search end<input type="datetime-local" id="pEnd" step="1"></label>
+      <label class="chk"><input type="checkbox" id="pNvrPtz"> PTZ / image via NVR (proxy)</label>
+    </div>
+  </div>
+
+  <main>
+    <nav>
+      <input id="search" placeholder="Search commands…">
+      <div id="cats"></div>
+    </nav>
+    <section class="cmds" id="cmds"></section>
+    <aside>
+      <div class="editor">
+        <div class="row">
+          <select id="method"><option>GET</option><option>PUT</option><option>POST</option><option>DELETE</option></select>
+          <input id="path" value="/ISAPI/System/deviceInfo" spellcheck="false">
+        </div>
+        <textarea id="body" placeholder="Request body (XML or JSON) for PUT / POST" spellcheck="false"></textarea>
+        <div class="row" style="align-items:center">
+          <select id="ctype" style="width:auto"><option value='application/xml; charset="UTF-8"'>XML</option><option value="application/json">JSON</option><option value="text/plain">Text</option></select>
+          <label style="flex-direction:row;align-items:center;gap:4px">Timeout <input id="timeout" type="number" value="20" style="width:56px">s</label>
+          <span style="flex:1"></span>
+          <button id="btnStop" class="danger" style="display:none">Stop</button>
+          <button class="primary" id="btnSend">Send ▶</button>
+        </div>
+        <div class="hint" id="hint"></div>
+      </div>
+      <div class="resp">
+        <div class="rhead">
+          <span class="status" id="rStatus">—</span>
+          <span class="meta" id="rMeta">No request sent yet</span>
+          <div class="tabs"><button data-tab="read">Readable</button><button data-tab="raw">Raw</button><button data-tab="head">Headers</button><button id="btnWide" title="Widen the response panel">⤢</button><button id="btnCopy">Copy</button><span id="dl"></span></div>
+        </div>
+        <div class="rbody" id="rBody"><div class="empty">Enter the device details, click <b>Connect / Test</b>, then pick a command.</div></div>
+        <div class="HIST"><div class="hh"><span>History</span><a href="#" id="clrHist" style="color:var(--muted)">clear</a></div><div id="hist"></div></div>
+      </div>
+    </aside>
+  </main>
+  <footer><span>Hikvision ISAPI Control Panel · © 2026 Rikki Keene</span><span>Independent tool, not affiliated with Hikvision. Commands depend on the model and firmware. Check a feature's <i>capabilities</i> first.</span></footer>
+</div>
+
+<div class="modal" id="modal"><div class="box">
+  <h3 id="mTitle">Confirm</h3><p id="mText"></p><code id="mCode"></code>
+  <div class="btns"><button id="mNo">Cancel</button><button class="danger" id="mYes">Send anyway</button></div>
+</div></div>
+
+<script>
+"use strict";
+const TOKEN = "__HIK_TOOL_TOKEN__";
+const $ = s => document.querySelector(s);
+const X = '<?xml version="1.0" encoding="UTF-8"?>\n';
+const c = (m, label, path, o = {}) => ({ m, label, path, ...o });
+// o: b=body, d=dangerous(confirm), t=tag (NVR/DVR/Cam), k=kind (img|bin|stream), auto=send immediately even with body, n=note
+
+const CATALOG = [
+ { id:"system", name:"Device & System", cmds:[
+  c("GET","Device information","/ISAPI/System/deviceInfo"),
+  c("GET","Device status (CPU / memory / uptime)","/ISAPI/System/status"),
+  c("GET","Working status (channels, HDDs, alarms)","/ISAPI/System/workingstatus?format=json",{t:"NVR"}),
+  c("GET","System capabilities","/ISAPI/System/capabilities"),
+  c("GET","Firmware upgrade status","/ISAPI/System/upgradeStatus"),
+  c("GET","Serial ports (RS-485/232)","/ISAPI/System/Serial/ports"),
+  c("GET","Export configuration file","/ISAPI/System/configurationData",{k:"bin",n:"Downloads the encrypted config backup"}),
+  c("PUT","Rename device","/ISAPI/System/deviceInfo",{b:X+"<DeviceInfo>\n  <deviceName>Site-NVR-01</deviceName>\n</DeviceInfo>",n:"Some firmware wants the full DeviceInfo. GET it first and edit that."}),
+  c("PUT","Reboot device","/ISAPI/System/reboot",{d:1}),
+  c("PUT","Factory reset (basic, keeps network/users)","/ISAPI/System/factoryReset?mode=basic",{d:1}),
+  c("PUT","Factory reset (full)","/ISAPI/System/factoryReset?mode=full",{d:1}),
+ ]},
+ { id:"time", name:"Date & Time", cmds:[
+  c("GET","Current time & time zone","/ISAPI/System/time"),
+  c("GET","Time capabilities","/ISAPI/System/time/capabilities"),
+  c("PUT","Sync to this PC's clock","/ISAPI/System/time",{b:X+"<Time>\n  <timeMode>manual</timeMode>\n  <localTime>{now}</localTime>\n</Time>",n:"{now} = this PC's local time"}),
+  c("PUT","Switch to NTP mode","/ISAPI/System/time",{b:X+"<Time>\n  <timeMode>NTP</timeMode>\n</Time>"}),
+  c("PUT","Set time zone (UK GMT/BST)","/ISAPI/System/time",{b:X+"<Time>\n  <timeZone>CST+0:00:00DST01:00:00,M3.5.0/01:00:00,M10.5.0/02:00:00</timeZone>\n</Time>",n:"Hikvision POSIX format, sign inverted (CST-1 = UTC+1)"}),
+  c("GET","NTP servers","/ISAPI/System/time/ntpServers"),
+  c("PUT","Set NTP server 1","/ISAPI/System/time/ntpServers/1",{b:X+"<NTPServer>\n  <id>1</id>\n  <addressingFormatType>hostname</addressingFormatType>\n  <hostName>pool.ntp.org</hostName>\n  <portNo>123</portNo>\n  <synchronizeInterval>60</synchronizeInterval>\n</NTPServer>"}),
+ ]},
+ { id:"network", name:"Network", cmds:[
+  c("GET","Network interfaces","/ISAPI/System/Network/interfaces"),
+  c("GET","LAN 1 IP settings","/ISAPI/System/Network/interfaces/1/ipAddress"),
+  c("GET","LAN 1 link / speed","/ISAPI/System/Network/interfaces/1/link"),
+  c("PUT","Set static IP (LAN 1)","/ISAPI/System/Network/interfaces/1/ipAddress",{d:1,b:X+"<IPAddress>\n  <ipVersion>v4</ipVersion>\n  <addressingType>static</addressingType>\n  <ipAddress>192.168.1.64</ipAddress>\n  <subnetMask>255.255.255.0</subnetMask>\n  <DefaultGateway><ipAddress>192.168.1.1</ipAddress></DefaultGateway>\n  <PrimaryDNS><ipAddress>8.8.8.8</ipAddress></PrimaryDNS>\n</IPAddress>",n:"You will lose this connection if the IP changes"}),
+  c("GET","Service ports (HTTP / HTTPS / RTSP / SDK)","/ISAPI/Security/adminAccesses"),
+  c("GET","DDNS","/ISAPI/System/Network/DDNS"),
+  c("GET","PPPoE","/ISAPI/System/Network/PPPoE"),
+  c("GET","UPnP","/ISAPI/System/Network/UPnP"),
+  c("GET","UPnP port mapping status","/ISAPI/System/Network/UPnP/ports/status"),
+  c("GET","Hik-Connect / EZVIZ platform","/ISAPI/System/Network/EZVIZ"),
+  c("GET","Email (SMTP)","/ISAPI/System/Network/mailing"),
+  c("GET","FTP","/ISAPI/System/Network/ftp"),
+  c("GET","SNMP","/ISAPI/System/Network/SNMP"),
+  c("GET","802.1X","/ISAPI/System/Network/interfaces/1/ieee802.1x"),
+  c("GET","Integration protocols (ISAPI / ONVIF / CGI)","/ISAPI/System/Network/Integrate"),
+  c("GET","Network capabilities","/ISAPI/System/Network/capabilities"),
+ ]},
+ { id:"users", name:"Users & Security", cmds:[
+  c("GET","User list","/ISAPI/Security/users"),
+  c("GET","User {uid} details","/ISAPI/Security/users/{uid}"),
+  c("GET","User permissions","/ISAPI/Security/UserPermission"),
+  c("GET","Online users / sessions","/ISAPI/Security/onlineUser"),
+  c("GET","Check credentials","/ISAPI/Security/userCheck"),
+  c("POST","Add user","/ISAPI/Security/users",{b:X+"<User>\n  <id>{uid}</id>\n  <userName>operator1</userName>\n  <password>ChangeMe123!</password>\n  <userLevel>Operator</userLevel>\n</User>",n:"Newer firmware also needs <loginPassword> = current admin password"}),
+  c("PUT","Change user {uid} password","/ISAPI/Security/users/{uid}",{d:1,b:X+"<User>\n  <id>{uid}</id>\n  <userName>operator1</userName>\n  <password>NewPassword123!</password>\n  <loginPassword>ADMIN_PASSWORD</loginPassword>\n</User>"}),
+  c("DELETE","Delete user {uid}","/ISAPI/Security/users/{uid}",{d:1}),
+  c("GET","Illegal login lock settings","/ISAPI/Security/illegalLoginLock"),
+  c("GET","IP address filter","/ISAPI/System/Network/ipFilter"),
+  c("GET","ONVIF users","/ISAPI/Security/ONVIF/users"),
+  c("GET","Security capabilities","/ISAPI/Security/capabilities"),
+ ]},
+ { id:"channels", name:"Cameras / Channels", cmds:[
+  c("GET","IP camera channels","/ISAPI/ContentMgmt/InputProxy/channels",{t:"NVR"}),
+  c("GET","IP camera online status","/ISAPI/ContentMgmt/InputProxy/channels/status",{t:"NVR"}),
+  c("GET","IP channel {ch} config","/ISAPI/ContentMgmt/InputProxy/channels/{ch}",{t:"NVR"}),
+  c("GET","IP channel capabilities","/ISAPI/ContentMgmt/InputProxy/channels/capabilities",{t:"NVR"}),
+  c("POST","Add IP camera","/ISAPI/ContentMgmt/InputProxy/channels",{t:"NVR",b:X+"<InputProxyChannel>\n  <id>{ch}</id>\n  <name>Camera {ch}</name>\n  <sourceInputPortDescriptor>\n    <proxyProtocol>HIKVISION</proxyProtocol>\n    <addressingFormatType>ipaddress</addressingFormatType>\n    <ipAddress>192.168.254.2</ipAddress>\n    <managePortNo>8000</managePortNo>\n    <srcInputPort>1</srcInputPort>\n    <userName>admin</userName>\n    <password>CameraPassword</password>\n    <streamType>auto</streamType>\n  </sourceInputPortDescriptor>\n</InputProxyChannel>",n:"Use ONVIF + port 80 for third-party cameras"}),
+  c("DELETE","Remove IP camera {ch}","/ISAPI/ContentMgmt/InputProxy/channels/{ch}",{t:"NVR",d:1}),
+  c("GET","Video inputs (analogue / local)","/ISAPI/System/Video/inputs/channels",{t:"DVR"}),
+  c("GET","Video input {ch}","/ISAPI/System/Video/inputs/channels/{ch}"),
+  c("PUT","Rename channel {ch}","/ISAPI/System/Video/inputs/channels/{ch}",{t:"DVR",b:X+"<VideoInputChannel>\n  <id>{ch}</id>\n  <inputPort>{ch}</inputPort>\n  <name>Front Door</name>\n</VideoInputChannel>"}),
+  c("GET","OSD overlays {ch}","/ISAPI/System/Video/inputs/channels/{ch}/overlays"),
+  c("GET","Privacy mask {ch}","/ISAPI/System/Video/inputs/channels/{ch}/privacyMask"),
+ ]},
+ { id:"stream", name:"Live View & Snapshot", cmds:[
+  c("GET","Snapshot ch {ch} (stream {sid})","/ISAPI/Streaming/channels/{sid}/picture",{k:"img"}),
+  c("GET","All stream channels","/ISAPI/Streaming/channels"),
+  c("GET","Stream {sid} encoding settings","/ISAPI/Streaming/channels/{sid}"),
+  c("GET","Stream {sid} capabilities","/ISAPI/Streaming/channels/{sid}/capabilities"),
+  c("GET","Streaming sessions / clients","/ISAPI/Streaming/status"),
+  c("PUT","Request key frame {sid}","/ISAPI/Streaming/channels/{sid}/requestKeyFrame"),
+ ]},
+ { id:"record", name:"Recording & Playback", cmds:[
+  c("POST","Search recordings (ch {ch})","/ISAPI/ContentMgmt/search",{auto:1,b:X+"<CMSearchDescription>\n  <searchID>{uuid}</searchID>\n  <trackIDList><trackID>{sid}</trackID></trackIDList>\n  <timeSpanList><timeSpan>\n    <startTime>{start}</startTime>\n    <endTime>{end}</endTime>\n  </timeSpan></timeSpanList>\n  <maxResults>100</maxResults>\n  <searchResultPostion>0</searchResultPostion>\n  <metadataList><metadataDescriptor>//recordType.meta.std-cgi.com</metadataDescriptor></metadataList>\n</CMSearchDescription>",n:"Uses Search start/end. 'Postion' is Hikvision's own spelling."}),
+  c("GET","Record schedules (all tracks)","/ISAPI/ContentMgmt/record/tracks"),
+  c("GET","Record schedule track {sid}","/ISAPI/ContentMgmt/record/tracks/{sid}"),
+  c("PUT","Start manual recording {sid}","/ISAPI/ContentMgmt/record/control/manual/start/tracks/{sid}"),
+  c("PUT","Stop manual recording {sid}","/ISAPI/ContentMgmt/record/control/manual/stop/tracks/{sid}"),
+  c("GET","Content management capabilities","/ISAPI/ContentMgmt/capabilities"),
+ ]},
+ { id:"storage", name:"Storage / HDD", cmds:[
+  c("GET","Storage overview","/ISAPI/ContentMgmt/Storage"),
+  c("GET","HDD list (status, capacity, free)","/ISAPI/ContentMgmt/Storage/hdd"),
+  c("GET","HDD {hdd} details","/ISAPI/ContentMgmt/Storage/hdd/{hdd}"),
+  c("GET","HDD {hdd} S.M.A.R.T. status","/ISAPI/ContentMgmt/Storage/hdd/{hdd}/SMARTTest/status"),
+  c("GET","HDD capabilities","/ISAPI/ContentMgmt/Storage/hdd/capabilities"),
+  c("GET","Storage quota","/ISAPI/ContentMgmt/Storage/quota"),
+  c("GET","NAS / network disks","/ISAPI/ContentMgmt/Storage/nas"),
+  c("PUT","Format HDD {hdd}","/ISAPI/ContentMgmt/Storage/hdd/{hdd}/format",{d:1,n:"ERASES ALL RECORDINGS on that disk"}),
+  c("GET","HDD {hdd} format progress","/ISAPI/ContentMgmt/Storage/hdd/{hdd}/formatStatus"),
+ ]},
+ { id:"events", name:"Events & Alarm I/O", cmds:[
+  c("GET","Live alarm / event stream","/ISAPI/Event/notification/alertStream",{k:"stream",n:"Streams events until you press Stop"}),
+  c("GET","Event triggers / linkage","/ISAPI/Event/triggers"),
+  c("GET","Event capabilities","/ISAPI/Event/capabilities"),
+  c("GET","Alarm server (HTTP hosts)","/ISAPI/Event/notification/httpHosts"),
+  c("GET","Motion detection {ch}","/ISAPI/System/Video/inputs/channels/{ch}/motionDetection"),
+  c("GET","Video tamper {ch}","/ISAPI/System/Video/inputs/channels/{ch}/tamperDetection"),
+  c("GET","Line crossing {ch}","/ISAPI/Smart/LineDetection/{ch}"),
+  c("GET","Intrusion (field detection) {ch}","/ISAPI/Smart/FieldDetection/{ch}"),
+  c("GET","Region entrance {ch}","/ISAPI/Smart/regionEntrance/{ch}"),
+  c("GET","Region exiting {ch}","/ISAPI/Smart/regionExiting/{ch}"),
+  c("GET","Smart event capabilities","/ISAPI/Smart/capabilities"),
+  c("GET","I/O status (all)","/ISAPI/System/IO/status"),
+  c("GET","Alarm inputs","/ISAPI/System/IO/inputs"),
+  c("GET","Alarm input {io} status","/ISAPI/System/IO/inputs/{io}/status"),
+  c("GET","Alarm outputs","/ISAPI/System/IO/outputs"),
+  c("GET","Alarm output {io} status","/ISAPI/System/IO/outputs/{io}/status"),
+  c("PUT","Alarm output {io} ON","/ISAPI/System/IO/outputs/{io}/trigger",{auto:1,b:X+"<IOPortData>\n  <outputState>high</outputState>\n</IOPortData>"}),
+  c("PUT","Alarm output {io} OFF","/ISAPI/System/IO/outputs/{io}/trigger",{auto:1,b:X+"<IOPortData>\n  <outputState>low</outputState>\n</IOPortData>"}),
+ ]},
+ { id:"arm", name:"Arm / Disarm (Linkage)", cmds:[
+  c("GET","All event linkages (raw)","/ISAPI/Event/triggers"),
+  c("GET","Linkage capabilities","/ISAPI/Event/triggersCap"),
+  c("GET","Motion linkage ch {ch}","/ISAPI/Event/triggers/VMD-{ch}"),
+  c("GET","Intrusion linkage ch {ch}","/ISAPI/Event/triggers/fielddetection-{ch}"),
+  c("GET","Line crossing linkage ch {ch}","/ISAPI/Event/triggers/linedetection-{ch}"),
+  c("GET","Alarm input {io} linkage","/ISAPI/Event/triggers/IO-{io}"),
+ ]},
+ { id:"ptz", name:"PTZ Control", cmds:[
+  c("GET","PTZ status / position","{ptz}/status"),
+  c("GET","PTZ capabilities","{ptz}/capabilities"),
+  c("GET","Preset list","{ptz}/presets"),
+  c("PUT","Go to preset {preset}","{ptz}/presets/{preset}/goto"),
+  c("PUT","Save current view as preset {preset}","{ptz}/presets/{preset}",{b:X+"<PTZPreset>\n  <id>{preset}</id>\n  <presetName>Preset {preset}</presetName>\n</PTZPreset>"}),
+  c("DELETE","Delete preset {preset}","{ptz}/presets/{preset}",{d:1}),
+  c("GET","Patrol list","{ptz}/patrols"),
+  c("PUT","Start patrol {patrol}","{ptz}/patrols/{patrol}/start"),
+  c("PUT","Stop patrol {patrol}","{ptz}/patrols/{patrol}/stop"),
+  c("PUT","Go to home position","{ptz}/homeposition/goto"),
+  c("PUT","Stop all movement","{ptz}/continuous",{auto:1,b:X+"<PTZData>\n  <pan>0</pan>\n  <tilt>0</tilt>\n  <zoom>0</zoom>\n</PTZData>"}),
+  c("PUT","Light ON","{ptz}/auxcontrols/1",{auto:1,b:X+"<PTZAux>\n  <id>1</id>\n  <type>LIGHT</type>\n  <status>on</status>\n</PTZAux>"}),
+  c("PUT","Light OFF","{ptz}/auxcontrols/1",{auto:1,b:X+"<PTZAux>\n  <id>1</id>\n  <type>LIGHT</type>\n  <status>off</status>\n</PTZAux>"}),
+  c("PUT","Wiper ON","{ptz}/auxcontrols/1",{auto:1,b:X+"<PTZAux>\n  <id>1</id>\n  <type>WIPER</type>\n  <status>on</status>\n</PTZAux>"}),
+ ]},
+ { id:"image", name:"Image Settings", cmds:[
+  c("GET","Image settings {ch}","{img}"),
+  c("GET","Image capabilities {ch}","{img}/capabilities"),
+  c("GET","Colour (brightness/contrast/saturation)","{img}/color"),
+  c("GET","Day/Night (IR-cut) mode","{img}/IrcutFilter"),
+  c("PUT","Force NIGHT mode","{img}/IrcutFilter",{auto:1,b:X+"<IrcutFilter>\n  <IrcutFilterType>night</IrcutFilterType>\n</IrcutFilter>"}),
+  c("PUT","Force DAY mode","{img}/IrcutFilter",{auto:1,b:X+"<IrcutFilter>\n  <IrcutFilterType>day</IrcutFilterType>\n</IrcutFilter>"}),
+  c("PUT","Day/Night AUTO","{img}/IrcutFilter",{auto:1,b:X+"<IrcutFilter>\n  <IrcutFilterType>auto</IrcutFilterType>\n</IrcutFilter>"}),
+  c("GET","WDR","{img}/WDR"),
+  c("GET","BLC (backlight)","{img}/BLC"),
+  c("GET","Supplement light (IR / white light)","{img}/supplementLight"),
+ ]},
+ { id:"audio", name:"Audio", cmds:[
+  c("GET","Audio channels","/ISAPI/System/Audio/channels"),
+  c("GET","Two-way audio channels","/ISAPI/System/TwoWayAudio/channels"),
+  c("GET","Audio capabilities","/ISAPI/System/Audio/capabilities"),
+ ]},
+ { id:"logs", name:"Logs", cmds:[
+  c("POST","Search device log","/ISAPI/ContentMgmt/logSearch",{auto:1,b:X+"<CMSearchDescription>\n  <searchID>{uuid}</searchID>\n  <metaId>log.std-cgi.com</metaId>\n  <timeSpanList><timeSpan>\n    <startTime>{start}</startTime>\n    <endTime>{end}</endTime>\n  </timeSpan></timeSpanList>\n  <maxResults>100</maxResults>\n  <searchResultPostion>0</searchResultPostion>\n</CMSearchDescription>",n:"Narrow with metaId e.g. log.std-cgi.com/Alarm, /Exception, /Operation, /Information"}),
+ ]},
+];
+
+// ------------------------------------------------------------ helpers ---
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[ch]));
+const pad2 = n => String(n).padStart(2,"0");
+const fmtLocal = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => { const r = Math.random()*16|0; return (ch==="x"?r:(r&3|8)).toString(16); })).toUpperCase();
+const ls = { get(k,d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch{ return d; } }, set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} } };
+
+function P(){
+  const ch = Math.max(1, +$("#pCh").value || 1);
+  const nvr = $("#pNvrPtz").checked;
+  const dt = id => { const v = $(id).value; return v ? (v.length === 16 ? v + ":00" : v) + "Z" : ""; };
+  return {
+    ch, sid: ch*100 + (+$("#pStream").value), preset: +$("#pPreset").value || 1, patrol: +$("#pPatrol").value || 1,
+    hdd: +$("#pHdd").value || 1, uid: +$("#pUid").value || 1, io: +$("#pIo").value || 1,
+    start: dt("#pStart"), end: dt("#pEnd"), now: fmtLocal(new Date()), uuid: uuid(),
+    ptz: nvr ? `/ISAPI/ContentMgmt/PTZCtrlProxy/channels/${ch}` : `/ISAPI/PTZCtrl/channels/${ch}`,
+    img: nvr ? `/ISAPI/ContentMgmt/ImageProxy/channels/${ch}` : `/ISAPI/Image/channels/${ch}`,
+  };
+}
+function fill(s, p = P()){ return s == null ? s : s.replace(/\{(\w+)\}/g, (m,k) => (k in p ? p[k] : m)); }
+
+const DANGER = [/\/reboot\b/i, /factoryReset/i, /\/format$/i, /interfaces\/\d+\/ipAddress/i, /configurationData/i, /\/Security\/users/i];
+function isDanger(method, path){
+  if (method === "GET") return false;
+  if (method === "DELETE") return true;
+  return DANGER.some(r => r.test(path));
+}
+
+// ------------------------------------------------------------- render ---
+let activeCat = ls.get("hik.cat", "system");
+function renderCats(){
+  $("#cats").innerHTML = CATALOG.map(cat => `<button class="cat ${cat.id===activeCat?"active":""}" data-cat="${cat.id}">${esc(cat.name)}<span>${cat.cmds.length}</span></button>`).join("");
+}
+function cmdBtn(x){
+  const p = P();
+  const tags = [x.t ? `<span class="tag">${x.t}</span>` : "", x.d ? `<span class="tag warn">confirm</span>` : "", x.k==="img"?`<span class="tag">image</span>`:"", x.k==="stream"?`<span class="tag">live</span>`:""].join("");
+  return `<button class="cmd ${x.d?"dz":""}" data-i="${x._i}" title="${esc(x.n||"")}"><div class="top"><span class="m m-${x.m}">${x.m}</span><span class="lbl">${esc(fill(x.label,p))}</span>${tags}</div><span class="path">${esc(fill(x.path,p))}</span></button>`;
+}
+const FLAT = []; CATALOG.forEach(cat => cat.cmds.forEach(x => { x._i = FLAT.length; x.cat = cat.name; FLAT.push(x); }));
+
+function renderCmds(){
+  const q = $("#search").value.trim().toLowerCase();
+  let html = "";
+  if (q){
+    const hits = FLAT.filter(x => (x.label+" "+x.path+" "+x.cat+" "+(x.t||"")).toLowerCase().includes(q));
+    html = `<h2>Search: “${esc(q)}”</h2><p class="sub">${hits.length} matching command(s)</p><div class="grid">${hits.map(cmdBtn).join("")}</div>`;
+  } else {
+    const cat = CATALOG.find(c => c.id === activeCat) || CATALOG[0];
+    html = `<h2>${esc(cat.name)}</h2><p class="sub">GET commands send straight away. Commands that change settings load into the editor so you can check them first. Risky ones ask for confirmation.</p>`;
+    if (cat.id === "ptz") html += ptzPanel();
+    if (cat.id === "stream") html += rtspPanel();
+    if (cat.id === "channels") html += channelPanel();
+    if (cat.id === "arm") html += armPanel();
+    html += `<div class="grid">${cat.cmds.map(cmdBtn).join("")}</div>`;
+  }
+  $("#cmds").innerHTML = html;
+  if (!q && activeCat === "ptz") wirePtz();
+  if (!q && activeCat === "stream") wireRtsp();
+  if (!q && activeCat === "channels") wireChannelPanel();
+  if (!q && activeCat === "arm") wireArm();
+}
+
+function ptzPanel(){
+  return `<div class="special"><h3>PTZ joystick: channel ${P().ch} ${$("#pNvrPtz").checked?"(via NVR)":""}</h3>
+  <div class="ptzwrap">
+    <div class="pad">
+      <button data-pt="-1,1">↖</button><button data-pt="0,1">↑</button><button data-pt="1,1">↗</button>
+      <button data-pt="-1,0">←</button><button id="ptzHome" title="Home position">⌂</button><button data-pt="1,0">→</button>
+      <button data-pt="-1,-1">↙</button><button data-pt="0,-1">↓</button><button data-pt="1,-1">↘</button>
+    </div>
+    <div class="lens">
+      <span>Zoom</span><button data-z="-1">−</button><button data-z="1">+</button>
+      <span>Focus</span><button data-f="-1">Near</button><button data-f="1">Far</button>
+      <span>Iris</span><button data-ir="-1">Close</button><button data-ir="1">Open</button>
+      <span>Speed</span><input type="range" id="ptzSpeed" min="10" max="100" value="${ls.get("hik.ptzSpeed",60)}" style="grid-column:span 2">
+    </div>
+  </div>
+  <div class="ptzstat" id="ptzStat">Hold a button to move, let go to stop. Focus and iris go directly to the camera.</div></div>`;
+}
+function wirePtz(){
+  const sp = () => +$("#ptzSpeed").value;
+  $("#ptzSpeed").oninput = e => ls.set("hik.ptzSpeed", +e.target.value);
+  const hold = (el, start, stop) => {
+    let on = false;
+    el.addEventListener("pointerdown", e => { e.preventDefault(); on = true; el.setPointerCapture(e.pointerId); start(); });
+    const end = () => { if (on){ on = false; stop(); } };
+    el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end); el.addEventListener("lostpointercapture", end);
+  };
+  const cont = (pan,tilt,zoom) => quick("PUT", fill("{ptz}/continuous"), `${X}<PTZData><pan>${pan}</pan><tilt>${tilt}</tilt><zoom>${zoom}</zoom></PTZData>`);
+  document.querySelectorAll("[data-pt]").forEach(b => { const [x,y] = b.dataset.pt.split(",").map(Number); hold(b, () => cont(x*sp(), y*sp(), 0), () => cont(0,0,0)); });
+  document.querySelectorAll("[data-z]").forEach(b => hold(b, () => cont(0,0,+b.dataset.z*sp()), () => cont(0,0,0)));
+  document.querySelectorAll("[data-f]").forEach(b => hold(b, () => quick("PUT", fill("/ISAPI/System/Video/inputs/channels/{ch}/focus"), `${X}<FocusData><focus>${+b.dataset.f*sp()}</focus></FocusData>`), () => quick("PUT", fill("/ISAPI/System/Video/inputs/channels/{ch}/focus"), `${X}<FocusData><focus>0</focus></FocusData>`)));
+  document.querySelectorAll("[data-ir]").forEach(b => hold(b, () => quick("PUT", fill("/ISAPI/System/Video/inputs/channels/{ch}/iris"), `${X}<IrisData><iris>${+b.dataset.ir*sp()}</iris></IrisData>`), () => quick("PUT", fill("/ISAPI/System/Video/inputs/channels/{ch}/iris"), `${X}<IrisData><iris>0</iris></IrisData>`)));
+  $("#ptzHome").onclick = () => quick("PUT", fill("{ptz}/homeposition/goto"), "");
+}
+async function quick(method, path, body){
+  const st = $("#ptzStat");
+  const r = await execute({ method, path, body }, { display:false });
+  if (st) st.textContent = `${method} ${path} → ${r.error ? "ERROR " + r.error : r.status + " " + (r.summary || "")}`;
+}
+
+function rtspPanel(){
+  return `<div class="special"><h3>RTSP / URL builder: channel ${P().ch}</h3>
+    <div style="display:flex;gap:10px;margin-bottom:8px;align-items:flex-end">
+      <label>RTSP port<input id="rtspPort" value="${ls.get("hik.rtspPort","554")}" style="width:70px"></label>
+      <label class="chk" style="flex-direction:row;align-items:center;gap:5px;color:var(--text)"><input type="checkbox" id="rtspCred"> Include credentials</label>
+    </div><div class="rtsp" id="rtspOut"></div></div>`;
+}
+function wireRtsp(){
+  const upd = () => {
+    ls.set("hik.rtspPort", $("#rtspPort").value);
+    const p = P(), host = $("#ip").value.trim() || "IP", port = $("#rtspPort").value || "554";
+    const cred = $("#rtspCred").checked ? `${encodeURIComponent($("#user").value)}:${encodeURIComponent($("#pass").value)}@` : "";
+    const hs = $("#port").value && $("#port").value !== "80" && $("#port").value !== "443" ? ":" + $("#port").value : "";
+    const ts = s => s ? s.replace(/[-:]/g, "") : "YYYYMMDDTHHMMSSZ";
+    const rows = [
+      ["Live main", `rtsp://${cred}${host}:${port}/Streaming/Channels/${p.ch}01`],
+      ["Live sub", `rtsp://${cred}${host}:${port}/Streaming/Channels/${p.ch}02`],
+      ["Playback", `rtsp://${cred}${host}:${port}/Streaming/tracks/${p.ch}01?starttime=${ts(p.start)}&endtime=${ts(p.end)}`],
+      ["Snapshot URL", `${$("#scheme").value}://${host}${hs}/ISAPI/Streaming/channels/${p.sid}/picture`],
+    ];
+    $("#rtspOut").innerHTML = rows.map(([k,v]) => `<span>${k}</span><code>${esc(v)}</code><button data-copy="${esc(v)}">Copy</button>`).join("");
+    $("#rtspOut").querySelectorAll("[data-copy]").forEach(b => b.onclick = () => { navigator.clipboard?.writeText(b.dataset.copy); b.textContent = "Copied"; setTimeout(() => b.textContent = "Copy", 1200); });
+  };
+  $("#rtspPort").oninput = upd; $("#rtspCred").onchange = upd; upd();
+}
+
+// ------------------------------------------------------- channel picker ---
+const CH = { map:new Map(), loaded:false, busy:false };
+const xdoc = t => new DOMParser().parseFromString(t.slice(Math.max(0, t.indexOf("<"))), "application/xml");
+const kidv = (el, n) => { const k = [...el.children].find(c => c.localName === n); return k ? k.textContent.trim() : ""; };
+
+async function loadChannels(force){
+  if (CH.busy) return CH.loaded;
+  if (CH.loaded && !force) return true;
+  if (!$("#ip").value.trim()) return false;
+  CH.busy = true;
+  const map = new Map();
+  const vi = await execute({ method:"GET", path:"/ISAPI/System/Video/inputs/channels" }, { display:false });
+  if (vi.status === 200 && vi.text){
+    [...xdoc(vi.text).getElementsByTagNameNS("*", "VideoInputChannel")].forEach(el => {
+      const id = kidv(el, "id"); if (!id) return;
+      map.set(id, { id:+id, name: kidv(el, "name") || `Channel ${id}`, type:"Local", online:null, ip:"" });
+    });
+  }
+  const ipc = await execute({ method:"GET", path:"/ISAPI/ContentMgmt/InputProxy/channels" }, { display:false });
+  if (ipc.status === 200 && ipc.text){
+    [...xdoc(ipc.text).getElementsByTagNameNS("*", "InputProxyChannel")].forEach(el => {
+      const id = kidv(el, "id"); if (!id) return;
+      const src = el.getElementsByTagNameNS("*", "sourceInputPortDescriptor")[0];
+      map.set(id, { id:+id, name: kidv(el, "name") || `IP Camera ${id}`, type:"IP", online:null, ip: src ? kidv(src, "ipAddress") : "" });
+    });
+  }
+  const st = await execute({ method:"GET", path:"/ISAPI/ContentMgmt/InputProxy/channels/status" }, { display:false });
+  if (st.status === 200 && st.text){
+    [...xdoc(st.text).getElementsByTagNameNS("*", "InputProxyChannelStatus")].forEach(el => {
+      const c = map.get(kidv(el, "id")); if (c) c.online = /true/i.test(kidv(el, "online"));
+    });
+  }
+  CH.map = map; CH.loaded = true; CH.busy = false;
+  return map.size > 0;
+}
+const chList = () => [...CH.map.values()].sort((a, b) => a.id - b.id);
+function chDot(c){ const s = c.online == null ? "na" : c.online ? "on" : "off"; const t = c.online == null ? "status unknown" : c.online ? "online" : "offline"; return `<span class="dot ${s}" title="${t}"></span>`; }
+
+// inline panel for the Cameras / Channels section
+function channelPanel(){
+  return `<div class="special" id="chPanel">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <h3 style="margin:0">Channels on this device</h3>
+      <button class="primary" id="chLoad">${CH.loaded ? "Refresh" : "Load channels"}</button>
+    </div>
+    <div class="dim" style="margin:3px 0 8px">Click a row to select that channel everywhere, or take its snapshot. On a hybrid DVR the analogue inputs are 1–32 and IP cameras are numbered from 33 up.</div>
+    <div id="chList">${CH.loaded ? chTable() : `<div class="empty">Click <b>Load channels</b> to read them from the device.</div>`}</div>
+  </div>`;
+}
+function chTable(){
+  const rows = chList();
+  if (!rows.length) return `<div class="empty">No channels returned. On a DVR, check the user has camera-management permission.</div>`;
+  return `<div class="tw" style="max-height:48vh"><table class="lt"><thead><tr><th></th><th>Ch</th><th>Name</th><th>Type</th><th>Address</th><th></th></tr></thead><tbody>` +
+    rows.map(c => `<tr data-ch="${c.id}" style="cursor:pointer"><td>${chDot(c)}</td><td class="mono">${c.id}</td><td><b>${esc(c.name)}</b></td><td>${c.type}${c.online === false ? ` <span class="chip r">offline</span>` : ""}</td><td class="dim mono">${esc(c.ip || "—")}</td><td><button data-snap="${c.id}">Snapshot</button></td></tr>`).join("") +
+    `</tbody></table></div>`;
+}
+function wireChannelPanel(){
+  const load = async (force) => { $("#chList").innerHTML = `<div class="empty">Reading channels…</div>`; const ok = await loadChannels(force); $("#chLoad").textContent = CH.loaded ? "Refresh" : "Load channels"; $("#chList").innerHTML = ok ? chTable() : `<div class="summary bad">Couldn't read the channel list. Connect first, then check the account's permissions.</div>`; wireChRows(); };
+  $("#chLoad").onclick = () => load(true);
+  wireChRows();
+}
+function wireChRows(){
+  document.querySelectorAll("#chList [data-ch]").forEach(tr => tr.onclick = e => { if (e.target.closest("[data-snap]")) return; setChannel(+tr.dataset.ch); });
+  document.querySelectorAll("#chList [data-snap]").forEach(b => b.onclick = e => { e.stopPropagation(); snapChannel(+b.dataset.snap); });
+}
+function setChannel(id){
+  $("#pCh").value = id;
+  ls.set("hik.params", Object.fromEntries([...document.querySelectorAll("#params input,#params select")].map(i => [i.id, i.type === "checkbox" ? i.checked : i.value])));
+  renderCmds();
+  closeChPop();
+}
+function snapChannel(id){ setChannel(id); currentKind = "img"; execute({ method:"GET", path:`/ISAPI/Streaming/channels/${id}01/picture`, kind:"img" }, { display:true }); }
+
+// popover from the params bar, available in any section
+let chPop = null;
+function closeChPop(){ if (chPop){ chPop.remove(); chPop = null; document.removeEventListener("pointerdown", chPopOutside, true); } }
+function chPopOutside(e){ if (chPop && !chPop.contains(e.target) && e.target.id !== "pPick") closeChPop(); }
+function chPopHtml(filter){
+  const f = (filter || "").toLowerCase();
+  const rows = chList().filter(c => !f || (c.id + " " + c.name + " " + c.type).toLowerCase().includes(f));
+  if (!CH.loaded) return `<div class="empty">Loading…</div>`;
+  if (!rows.length) return `<div class="empty">No matching channels.</div>`;
+  return rows.map(c => `<div class="chrow" data-ch="${c.id}">${chDot(c)}<span class="num">${c.id}</span><span class="nm">${esc(c.name)}</span><span class="ty">${c.type}${c.online === false ? " · offline" : ""}</span></div>`).join("");
+}
+function paintChPop(filter){ const l = chPop.querySelector(".cplist"); l.innerHTML = chPopHtml(filter); l.querySelectorAll("[data-ch]").forEach(r => r.onclick = () => setChannel(+r.dataset.ch)); }
+async function openChPicker(){
+  if (chPop) return closeChPop();
+  const a = $("#pPick").getBoundingClientRect();
+  chPop = document.createElement("div");
+  chPop.className = "chpop";
+  chPop.style.left = Math.min(a.left, innerWidth - 360) + "px";
+  chPop.style.top = (a.bottom + 4) + "px";
+  chPop.innerHTML = `<div class="hd"><input class="cpf" placeholder="Find camera…" style="flex:1"><button class="cpr" title="Refresh">↻</button></div><div class="cplist"></div>`;
+  document.body.appendChild(chPop);
+  setTimeout(() => document.addEventListener("pointerdown", chPopOutside, true));
+  const f = chPop.querySelector(".cpf"); f.oninput = () => paintChPop(f.value); f.focus();
+  chPop.querySelector(".cpr").onclick = async () => { chPop.querySelector(".cplist").innerHTML = `<div class="empty">Reading…</div>`; await loadChannels(true); paintChPop(f.value); };
+  paintChPop("");
+  if (!CH.loaded){ const ok = await loadChannels(); if (chPop) paintChPop(""); if (!ok && chPop) chPop.querySelector(".cplist").innerHTML = `<div class="empty">Connect to the device first.</div>`; }
+}
+
+// ------------------------------------------------------- arm / disarm ---
+const LINKS = [
+  { m:"center", label:"Notify surveillance centre / Hik-Connect push", def:1, simple:1 },
+  { m:"email", label:"Send email", def:1 },
+  { m:"beep", label:"Audible warning (recorder buzzer)", def:1 },
+  { m:"IO", label:"Trigger alarm outputs (sirens / relays)", def:1 },
+  { m:"monitorAlarm", label:"Full-screen monitoring", def:0 },
+  { m:"whiteLight", label:"Camera strobe / flashing light", def:1 },
+  { m:"audio", label:"Camera audible alarm (speaker)", def:1 },
+  { m:"FTP", label:"Upload picture to FTP / NAS", def:0 },
+  { m:"record", label:"Trigger recording", def:0 },
+];
+const LINK_NAMES = { center:"Notify centre", email:"Email", beep:"Buzzer", IO:"Alarm out", monitorAlarm:"Full-screen", whiteLight:"Strobe", audio:"Camera audio", FTP:"FTP", record:"Record", picture:"Picture", cloud:"Cloud", LightAudioAlarm:"Light+audio", syncAlarmOut:"Sync alarm out" };
+const linkName = m => LINK_NAMES[m] || humanize(m);
+const BLOCK_RE = /<EventTriggerNotification\b[^>]*>[\s\S]*?<\/EventTriggerNotification>\s*/g;
+const methodOf = blk => (blk.match(/<notificationMethod>\s*([^<\s]+)\s*</) || [])[1] || "";
+const armKey = () => `hik.disarm.${$("#ip").value.trim()}:${$("#port").value.trim() || "80"}`;
+const ARM = { triggers:[], names:{}, sel:new Set(), loaded:false, busy:false, filter:"" };
+
+function armChosen(){ const saved = ls.get("hik.armLinks", null); return saved || LINKS.filter(l => l.def).map(l => l.m); }
+function armPanel(){
+  const chosen = armChosen();
+  return `<div class="special" id="armPanel">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div><h3 style="margin:0">Arm / disarm event linkage actions</h3>
+      <div class="dim" style="max-width:640px;margin-top:3px">Disarming removes the ticked linkage actions from the selected events and saves them on this PC. Arming puts back exactly what was removed. Detection and recording keep running. If nothing was saved for an event, arming only adds <i>Notify centre</i>.</div></div>
+      <div id="armState" class="armstate dim">—</div>
+    </div>
+    <div class="st" style="margin-top:10px">Linkage actions to control</div>
+    <div class="armlinks">${LINKS.map(l => `<label><input type="checkbox" data-link="${l.m}" ${chosen.includes(l.m) ? "checked" : ""}> ${esc(l.label)}</label>`).join("")}</div>
+    <div class="armbar">
+      <button class="primary" id="armLoad">${ARM.loaded ? "Refresh" : "Load events"}</button>
+      <button class="armbtn dis" id="armDis" ${ARM.loaded ? "" : "disabled"}>DISARM selected</button>
+      <button class="armbtn arm" id="armArm" ${ARM.loaded ? "" : "disabled"}>ARM selected</button>
+      <span style="flex:1"></span>
+      <label>Event type <select id="armFilter"><option value="">All events</option>${[...new Set(ARM.triggers.map(t => t.type))].map(t => `<option value="${esc(t)}" ${ARM.filter === t ? "selected" : ""}>${esc(evName(t))}</option>`).join("")}</select></label>
+      <button id="armAll">Select all</button><button id="armNone">None</button>
+    </div>
+    <div id="armTable">${ARM.loaded ? armTable() : `<div class="empty">Click <b>Load events</b> to read the event linkages from the device.</div>`}</div>
+    <div class="armlog" id="armLog" style="${ARM.log ? "" : "display:none"}">${esc(ARM.log || "")}</div>
+  </div>`;
+}
+function armVisible(){ return ARM.triggers.filter(t => !ARM.filter || t.type === ARM.filter); }
+function armTable(){
+  const chosen = armChosen(), store = ls.get(armKey(), {});
+  const vis = armVisible();
+  if (!vis.length) return `<div class="empty">No events with linkage settings found.</div>`;
+  let armed = 0, dis = 0;
+  const rows = vis.map(t => {
+    const active = t.methods.filter(m => chosen.includes(m.m));
+    const saved = (store[t.id] || []).map(methodOf).filter(m => chosen.includes(m));
+    const isArmed = active.length > 0;
+    if (ARM.sel.has(t.id)){ isArmed ? armed++ : dis++; }
+    const chips = t.methods.map(m => `<span class="chip ${chosen.includes(m.m) ? "g" : "n"}" title="${esc(m.m)}">${esc(linkName(m.m))}${m.extra ? " " + esc(m.extra) : ""}</span>`).join(" ") +
+      saved.filter(m => !t.methods.some(x => x.m === m)).map(m => `<span class="chip s" title="Removed by disarm, will be restored on arm">${esc(linkName(m))}</span>`).join(" ");
+    const src = t.ch ? `${t.srcType} ${esc(t.ch)}${ARM.names[t.ch] && t.srcType === "Ch" ? ` <span class="dim">${esc(ARM.names[t.ch])}</span>` : ""}` : `<span class="dim">System</span>`;
+    return `<tr><td><input type="checkbox" data-trig="${esc(t.id)}" ${ARM.sel.has(t.id) ? "checked" : ""}></td><td><b>${esc(evName(t.type))}</b><br><span class="dim mono">${esc(t.id)}</span></td><td>${src}</td><td>${chips || `<span class="dim">no linkage</span>`}</td><td><span class="chip ${isArmed ? "r" : "g"}">${isArmed ? "ARMED" : "DISARMED"}</span></td></tr>`;
+  }).join("");
+  setTimeout(() => { const s = $("#armState"); if (s){ const n = armed + dis; s.textContent = !n ? "Nothing selected" : armed && dis ? `PARTIAL ${armed}/${n} armed` : armed ? "ARMED" : "DISARMED"; s.style.color = !n ? "var(--muted)" : armed && dis ? "var(--warn)" : armed ? "var(--bad)" : "var(--ok)"; } });
+  return `<div class="tw" style="max-height:52vh"><table class="lt"><thead><tr><th></th><th>Event</th><th>Source</th><th>Linkage actions <span class="dim">(green = controlled, dashed = removed by disarm)</span></th><th>State</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function wireArm(){
+  const P_ = $("#armPanel"); if (!P_) return;
+  P_.querySelectorAll("[data-link]").forEach(cb => cb.onchange = () => { ls.set("hik.armLinks", [...P_.querySelectorAll("[data-link]:checked")].map(x => x.dataset.link)); $("#armTable").innerHTML = ARM.loaded ? armTable() : $("#armTable").innerHTML; wireArmTable(); });
+  $("#armLoad").onclick = armLoad;
+  $("#armDis").onclick = () => armApply(false);
+  $("#armArm").onclick = () => armApply(true);
+  $("#armFilter").onchange = e => { ARM.filter = e.target.value; $("#armTable").innerHTML = armTable(); wireArmTable(); };
+  $("#armAll").onclick = () => { armVisible().forEach(t => ARM.sel.add(t.id)); ls.set(armKey() + ".sel", [...ARM.sel]); $("#armTable").innerHTML = armTable(); wireArmTable(); };
+  $("#armNone").onclick = () => { ARM.sel.clear(); ls.set(armKey() + ".sel", []); $("#armTable").innerHTML = armTable(); wireArmTable(); };
+  wireArmTable();
+}
+function wireArmTable(){
+  document.querySelectorAll("[data-trig]").forEach(cb => cb.onchange = () => { cb.checked ? ARM.sel.add(cb.dataset.trig) : ARM.sel.delete(cb.dataset.trig); ls.set(armKey() + ".sel", [...ARM.sel]); $("#armTable").innerHTML = armTable(); wireArmTable(); });
+}
+function armLog(line){ ARM.log = ((ARM.log || "") + line + "\n").split("\n").slice(-200).join("\n"); const el = $("#armLog"); if (el){ el.style.display = ""; el.textContent = ARM.log; el.scrollTop = el.scrollHeight; } }
+function parseTriggers(xml){
+  const doc = new DOMParser().parseFromString(xml.slice(Math.max(0, xml.indexOf("<"))), "application/xml");
+  const kid = (el, n) => { const k = [...el.children].find(c => c.localName === n); return k ? k.textContent.trim() : ""; };
+  return [...doc.getElementsByTagNameNS("*", "EventTrigger")].map(el => {
+    const vch = kid(el, "videoInputChannelID") || kid(el, "dynVideoInputChannelID");
+    const io = kid(el, "inputIOPortID") || kid(el, "dynInputIOPortID");
+    const methods = [...el.getElementsByTagNameNS("*", "EventTriggerNotification")].map(n => ({ m: kid(n, "notificationMethod"), extra: kid(n, "outputIOPortID") || kid(n, "dynOutputIOPortID") || kid(n, "videoInputID") || kid(n, "dynVideoInputID") })).filter(x => x.m);
+    return { id: kid(el, "id"), type: kid(el, "eventType"), desc: kid(el, "eventDescription"), ch: vch || io, srcType: vch ? "Ch" : io ? "Input" : "", methods };
+  }).filter(t => t.id);
+}
+async function armLoad(){
+  if (ARM.busy) return;
+  ARM.busy = true; $("#armTable").innerHTML = `<div class="empty">Reading event linkages…</div>`;
+  const r = await execute({ method:"GET", path:"/ISAPI/Event/triggers" }, { display:false });
+  if (r.error || r.status !== 200 || !r.text){ ARM.busy = false; $("#armTable").innerHTML = `<div class="summary bad">Couldn't read /ISAPI/Event/triggers (${esc(r.error || r.status)}). Connect first, and check the user has Remote Parameter Settings permission.</div>`; return; }
+  ARM.triggers = parseTriggers(r.text);
+  ARM.names = {};
+  for (const p of ["/ISAPI/ContentMgmt/InputProxy/channels", "/ISAPI/System/Video/inputs/channels"]){
+    const n = await execute({ method:"GET", path:p }, { display:false });
+    if (n.status === 200 && n.text){
+      const d = new DOMParser().parseFromString(n.text.slice(n.text.indexOf("<")), "application/xml");
+      [...d.getElementsByTagNameNS("*", "InputProxyChannel"), ...d.getElementsByTagNameNS("*", "VideoInputChannel")].forEach(el => {
+        const k = n2 => ([...el.children].find(c => c.localName === n2) || {}).textContent;
+        const id = k("id"), nm = k("name"); if (id && nm && !ARM.names[id]) ARM.names[id] = nm;
+      });
+    }
+  }
+  const savedSel = ls.get(armKey() + ".sel", null);
+  ARM.sel = new Set(savedSel ? savedSel.filter(id => ARM.triggers.some(t => t.id === id)) : ARM.triggers.filter(t => t.ch).map(t => t.id));
+  ARM.loaded = true; ARM.busy = false;
+  if (activeCat === "arm" && !$("#search").value.trim()) renderCmds();
+  armLog(`Loaded ${ARM.triggers.length} event(s) from ${$("#ip").value}`);
+}
+async function armApply(arm){
+  if (ARM.busy) return;
+  const methods = armChosen();
+  const ids = ARM.triggers.filter(t => ARM.sel.has(t.id)).map(t => t.id);
+  if (!ids.length) return armLog("Select at least one event first.");
+  if (!methods.length) return armLog("Tick at least one linkage action to control.");
+  const ok = await confirmModal(`${arm ? "ARM" : "DISARM"} ${ids.length} event(s). This ${arm ? "restores" : "removes"}: ${methods.map(linkName).join(", ")}`, ids.join(", "));
+  if (!ok) return;
+  ARM.busy = true;
+  armLog(`${arm ? "Arming" : "Disarming"} ${ids.length} event(s)…`);
+  const store = ls.get(armKey(), {});
+  let done = 0, failed = 0, skipped = 0;
+  const one = async id => {
+    const path = "/ISAPI/Event/triggers/" + encodeURIComponent(id);
+    const g = await execute({ method:"GET", path }, { display:false });
+    if (g.status !== 200 || !g.text){ failed++; return armLog(`✖ ${id}: read failed (${g.error || g.status})`); }
+    let xml = g.text.slice(Math.max(0, g.text.indexOf("<")));
+    let changed = [], restored = [];
+    if (!arm){
+      xml = xml.replace(BLOCK_RE, blk => { if (methods.includes(methodOf(blk))){ changed.push(blk.trim()); return ""; } return blk; });
+    } else {
+      const present = (xml.match(BLOCK_RE) || []).map(methodOf);
+      const saved = store[id] || [];
+      for (const m of methods){
+        if (present.includes(m)) continue;
+        const blks = saved.filter(b => methodOf(b) === m);
+        if (blks.length){ changed.push(...blks); restored.push(...blks); }
+        else if (LINKS.find(l => l.m === m)?.simple) changed.push(`<EventTriggerNotification>\n<id>${m}</id>\n<notificationMethod>${m}</notificationMethod>\n</EventTriggerNotification>`);
+      }
+      if (changed.length){
+        const add = changed.join("\n") + "\n";
+        if (/<\/EventTriggerNotificationList>/.test(xml)) xml = xml.replace(/<\/EventTriggerNotificationList>/, add + "</EventTriggerNotificationList>");
+        else if (/<EventTriggerNotificationList\s*\/>/.test(xml)) xml = xml.replace(/<EventTriggerNotificationList\s*\/>/, "<EventTriggerNotificationList>\n" + add + "</EventTriggerNotificationList>");
+        else xml = xml.replace(/<\/EventTrigger>\s*$/, "<EventTriggerNotificationList>\n" + add + "</EventTriggerNotificationList>\n</EventTrigger>");
+      }
+    }
+    if (!changed.length){ skipped++; return armLog(`– ${id}: already ${arm ? "armed" : "disarmed"}`); }
+    const p = await execute({ method:"PUT", path, body:xml, contentType:'application/xml; charset="UTF-8"' }, { display:false });
+    const good = p.status === 200 && (!p.text || /<statusString>\s*OK/i.test(p.text) || /"statusCode"\s*:\s*1\b/.test(p.text));
+    if (!good){ failed++; return armLog(`✖ ${id}: device refused (${p.error || p.status} ${p.summary || ""})`); }
+    if (!arm) store[id] = [...new Set([...(store[id] || []), ...changed])];
+    else if (restored.length){ store[id] = (store[id] || []).filter(b => !restored.includes(b)); if (!store[id].length) delete store[id]; }
+    ls.set(armKey(), store);
+    done++; armLog(`✔ ${id}: ${arm ? "armed" : "disarmed"} (${changed.map(methodOf).map(linkName).join(", ")})`);
+  };
+  const queue = [...ids];
+  await Promise.all(Array.from({ length: 3 }, async () => { while (queue.length) await one(queue.shift()); }));
+  armLog(`Finished: ${done} changed, ${skipped} unchanged, ${failed} failed.`);
+  ARM.busy = false;
+  await armLoad();
+}
+
+// ------------------------------------------------------------ editor ---
+let currentKind = null;
+function loadCmd(x){
+  const p = P();
+  $("#method").value = x.m;
+  $("#path").value = fill(x.path, p);
+  $("#body").value = x.b ? fill(x.b, p) : "";
+  $("#ctype").value = 'application/xml; charset="UTF-8"';
+  currentKind = x.k || null;
+  const d = x.d || isDanger(x.m, $("#path").value);
+  $("#hint").textContent = x.n ? "ℹ " + x.n : (x.m !== "GET" && x.b ? "Check / edit the body, then press Send." : "");
+  const auto = (x.m === "GET" || (!x.b || x.auto)) && !d && !(x.m === "POST" && !x.auto);
+  if (auto) send();
+  else { $("#hint").textContent = (d ? "⚠ This changes the device. Check it, then press Send. " : "") + ($("#hint").textContent || "Check / edit, then press Send."); $("#body").focus(); }
+}
+
+// --------------------------------------------------------------- send ---
+let aborter = null;
+const HIST = [];
+function connSpec(){
+  return { scheme: $("#scheme").value, host: $("#ip").value.trim(), port: $("#port").value.trim(), username: $("#user").value, password: $("#pass").value, timeout: +$("#timeout").value || 20 };
+}
+async function send(){
+  const method = $("#method").value, path = $("#path").value.trim(), body = $("#body").value;
+  if (isDanger(method, path)){
+    const ok = await confirmModal("This command changes or deletes settings on the device", `${method} ${path}`);
+    if (!ok) return;
+  }
+  let ctype = $("#ctype").value;
+  if (body.trim().startsWith("{")) ctype = "application/json";
+  const kind = /alertStream/i.test(path) ? "stream" : (/\/picture\b/i.test(path) ? "img" : currentKind);
+  await execute({ method, path, body, contentType: ctype, kind }, { display:true });
+}
+
+async function execute(req, { display }){
+  const spec = { ...connSpec(), ...req };
+  if (kindIsStream(req)) spec.timeout = 3600;
+  if (!spec.host){ if (display) showError("Enter the device IP / host first"); return { error:"no host" }; }
+  const t0 = performance.now();
+  let ctl;
+  if (display){
+    if (aborter) aborter.abort();
+    ctl = aborter = new AbortController();
+    $("#btnStop").style.display = "";
+    $("#rStatus").textContent = "…"; $("#rStatus").className = "status";
+    $("#rMeta").textContent = `${req.method} ${req.path}`;
+    $("#rBody").innerHTML = `<div class="empty">Waiting for device…</div>`; $("#dl").innerHTML = "";
+  } else ctl = new AbortController();
+  const entry = { method:req.method, path:req.path, body:req.body, status:"…" };
+  try {
+    const r = await fetch("/api/request", { method:"POST", headers:{ "Content-Type":"application/json", "X-Tool-Token":TOKEN }, body: JSON.stringify(spec), signal: ctl.signal });
+    if (r.headers.get("X-Proxy-Error")){
+      const j = await r.json().catch(() => ({ error: r.statusText }));
+      throw new Error(j.error || "Helper error");
+    }
+    const status = +r.headers.get("X-Device-Status"), reason = r.headers.get("X-Device-Reason") || "";
+    const ct = (r.headers.get("Content-Type") || "").toLowerCase();
+    let hdrs = {}; try { hdrs = JSON.parse(r.headers.get("X-Device-Headers") || "{}"); } catch {}
+    entry.status = status;
+    let text = null, buf = null;
+    if (display && kindIsStream(req) && status === 200){
+      setStatus(status, reason, t0, null, ct);
+      const S = lastResp = { stream:true, raw:"", events:[], hidden:0, ct, hdrs, path:req.path };
+      renderBody();
+      const rd = r.body.getReader(), dec = new TextDecoder();
+      let total = 0, pending = "";
+      for (;;){
+        const { value, done } = await rd.read(); if (done) break;
+        total += value.length;
+        const chunk = dec.decode(value, { stream:true }).replace(/\r/g, "");
+        S.raw += chunk; if (S.raw.length > 400000) S.raw = S.raw.slice(-200000);
+        pending += chunk;
+        const re = /<EventNotificationAlert[\s\S]*?<\/EventNotificationAlert>/g; let m, last = 0;
+        while ((m = re.exec(pending))){ S.events.unshift(parseAlert(m[0])); last = re.lastIndex; }
+        pending = pending.slice(last); if (pending.length > 100000) pending = pending.slice(-20000);
+        if (S.events.length > 1000) S.events.length = 1000;
+        if (lastResp === S) renderBody();
+        $("#rMeta").textContent = `live · ${S.events.length} event(s) · ${fmtSize(total)} received`;
+      }
+      text = S.raw;
+    } else {
+      buf = await r.arrayBuffer();
+      if (isTextCt(ct) || !ct) text = new TextDecoder().decode(buf);
+    }
+    const summary = text ? summarise(text) : null;
+    entry.summary = summary?.short;
+    if (display){
+      if (!(kindIsStream(req) && status === 200)){
+        setStatus(status, reason, t0, buf ? buf.byteLength : null, ct);
+        lastResp = { text, buf, ct, hdrs, path:req.path };
+        renderBody();
+      } else $("#rMeta").textContent += " · stream ended";
+    }
+    pushHist(entry);
+    if (status === 200 && /deviceInfo$/.test(req.path) && text) setBadge(text);
+    return { status, text, summary: summary?.short };
+  } catch (e){
+    if (e.name === "AbortError"){ entry.status = "stop"; pushHist(entry); if (display) $("#rMeta").textContent += " (stopped)"; return { error:"stopped" }; }
+    entry.status = "ERR"; pushHist(entry);
+    if (display) showError(e.message.includes("Failed to fetch") ? "Can't reach the helper. Is hik_isapi_tool.py running?" : e.message);
+    return { error: e.message };
+  } finally {
+    if (display && aborter === ctl){ aborter = null; $("#btnStop").style.display = "none"; }
+  }
+}
+const kindIsStream = req => req.kind === "stream" || /alertStream/i.test(req.path);
+const isTextCt = ct => /xml|json|text|html|javascript/.test(ct);
+const fmtSize = n => n < 1024 ? n + " B" : n < 1048576 ? (n/1024).toFixed(1) + " KB" : (n/1048576).toFixed(2) + " MB";
+
+function setStatus(status, reason, t0, size, ct){
+  $("#rStatus").textContent = `${status} ${reason}`;
+  $("#rStatus").style.color = status < 300 ? "var(--ok)" : status < 400 ? "var(--warn)" : "var(--bad)";
+  $("#rMeta").textContent = [`${Math.round(performance.now() - t0)} ms`, size != null ? fmtSize(size) : null, ct.split(";")[0]].filter(Boolean).join(" · ");
+}
+function showError(msg){
+  $("#rStatus").textContent = "ERROR"; $("#rStatus").style.color = "var(--bad)";
+  $("#rBody").innerHTML = `<div class="summary bad">${esc(msg)}</div>`;
+}
+
+let lastResp = null, tab = ls.get("hik.tab", "read"), hideHeartbeat = true;
+function renderBody(){
+  if (!lastResp) return;
+  const { text, buf, ct, hdrs, path } = lastResp;
+  if (tab === "head"){ $("#rBody").innerHTML = `<pre>${esc(Object.entries(hdrs).map(([k,v]) => `${k}: ${v}`).join("\n"))}</pre>`; return; }
+  if (lastResp.stream) return renderStream(lastResp);
+  $("#dl").innerHTML = "";
+  const base = (path.split("?")[0].split("/").filter(Boolean).slice(-2).join("_")) || "response";
+  if (buf && /^image\//.test(ct)){
+    const url = URL.createObjectURL(new Blob([buf], { type: ct.split(";")[0] }));
+    $("#rBody").innerHTML = `<img src="${url}" alt="snapshot">`;
+    $("#dl").innerHTML = `<a href="${url}" download="${base}_${Date.now()}.jpg"><button>Download</button></a>`;
+    return;
+  }
+  if (text != null){
+    const s = summarise(text);
+    const isJson = /json/.test(ct) || /^\s*[\[{]/.test(text);
+    let view = null;
+    if (tab === "read"){ try { view = readable(text, isJson); } catch (e) { view = null; } }
+    const pretty = view == null ? `<pre>${hl(isJson ? prettyJson(text) : prettyXml(text))}</pre>` : view;
+    $("#rBody").innerHTML = (s ? `<div class="summary ${s.ok?"ok":"bad"}">${esc(s.long)}</div>` : "") + pretty;
+    const url = URL.createObjectURL(new Blob([text], { type:"text/plain" }));
+    $("#dl").innerHTML = `<a href="${url}" download="${base}.${/json/.test(ct)?"json":"xml"}"><button>Save</button></a>`;
+    return;
+  }
+  if (buf){
+    const url = URL.createObjectURL(new Blob([buf], { type: ct || "application/octet-stream" }));
+    $("#rBody").innerHTML = `<div class="summary ok">Binary response (${fmtSize(buf.byteLength)}). Use Download to save it.</div>`;
+    $("#dl").innerHTML = `<a href="${url}" download="${base}.bin"><button>Download</button></a>`;
+  }
+}
+function summarise(text){
+  const g = tag => (text.match(new RegExp(`<${tag}>([^<]*)</${tag}>`)) || [])[1];
+  if (/<ResponseStatus/.test(text)){
+    const code = g("statusCode"), str = g("statusString"), sub = g("subStatusCode"), url = g("requestURL");
+    const ok = code === "1" || /^ok$/i.test(str || "");
+    const hint = code === "4" && /notSupport|invalidOperation/i.test(sub || "") ? " (this model/firmware doesn't support it)" : code === "4" && /badXml|badParameters|invalidXMLFormat/i.test(sub||"") ? " (body format not accepted. GET the current settings and edit those)" : code === "7" ? " (reboot required)" : "";
+    return { ok: ok || code === "7", short: `${str || ""} ${sub || ""}`.trim(), long: `${ok ? "✔" : "✖"} ${str || "Status " + code}${sub ? " · " + sub : ""}${hint}${url ? " · " + url : ""}` };
+  }
+  try { const j = JSON.parse(text); if (j && "statusCode" in j){ const ok = j.statusCode === 1; return { ok, short: j.statusString, long: `${ok?"✔":"✖"} ${j.statusString || ""} ${j.subStatusCode || ""} ${j.errorMsg || ""}` }; } } catch {}
+  return null;
+}
+// ------------------------------------------------- readable rendering ---
+const ACRO = { id:"ID", ip:"IP", ipv4:"IPv4", ipv6:"IPv6", url:"URL", uri:"URI", hdd:"HDD", ntp:"NTP", rtsp:"RTSP", ptz:"PTZ", osd:"OSD", mac:"MAC", dns:"DNS", wdr:"WDR", blc:"BLC", dst:"DST", fps:"FPS", cpu:"CPU", ddns:"DDNS", upnp:"UPnP", vmd:"VMD", io:"I/O", ftp:"FTP", smtp:"SMTP", nas:"NAS", http:"HTTP", https:"HTTPS", sdk:"SDK", nic:"NIC", mtu:"MTU", smart:"S.M.A.R.T.", isapi:"ISAPI", onvif:"ONVIF", ir:"IR", dyn:"" };
+function humanize(name){
+  if (!name) return "";
+  const words = String(name).replace(/[_-]+/g, " ").replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2").split(/\s+/).filter(Boolean);
+  const out = words.map((w,i) => { const a = ACRO[w.toLowerCase()]; if (a !== undefined) return a; return i === 0 ? w[0].toUpperCase() + w.slice(1) : (/^[A-Z0-9]+$/.test(w) ? w : w.toLowerCase()); }).filter(Boolean).join(" ");
+  return out || name;
+}
+const EVENT_NAMES = { VMD:"Motion detection", vmd:"Motion detection", fielddetection:"Intrusion", linedetection:"Line crossing", regionEntrance:"Region entrance", regionExiting:"Region exiting", scenechangedetection:"Scene change", tamperdetection:"Video tampering", shelteralarm:"Video tampering", videoloss:"Video loss", IO:"Alarm input", diskfull:"HDD full", diskerror:"HDD error", nicbroken:"Network disconnected", ipconflict:"IP conflict", illaccess:"Illegal login", videomismatch:"Video standard mismatch", badvideo:"Bad video", recordException:"Recording exception", recordCycleAbnormal:"Recording cycle abnormal", PIR:"PIR alarm", facedetection:"Face detection", audioexception:"Audio exception", defocus:"Defocus", unattendedBaggage:"Unattended baggage", attendedBaggage:"Object removal", loitering:"Loitering", group:"People gathering", rapidMove:"Fast moving", parking:"Parking", poe:"PoE overload", hdBadBlock:"HDD bad block", highHDTemperature:"HDD high temperature", lowHDTemperature:"HDD low temperature", hdImpact:"HDD impact", severeHDFailure:"HDD severe failure", humanRecognition:"Human detection", vehicledetection:"Vehicle detection", ANPR:"ANPR", personQueueDetection:"Queue detection", heatmap:"Heat map" };
+const evName = t => EVENT_NAMES[t] || humanize(t);
+
+function toTree(text, isJson){
+  if (isJson){
+    const j = JSON.parse(text);
+    const conv = (name, v) => {
+      if (v && typeof v === "object" && !Array.isArray(v)) return { name, attrs:[], text:"", kids: Object.entries(v).flatMap(([k,x]) => Array.isArray(x) ? x.map(i => conv(k, i)) : [conv(k, x)]) };
+      return { name, attrs:[], text: v == null ? "" : String(v), kids:[] };
+    };
+    return Array.isArray(j) ? { name:"Response", attrs:[], text:"", kids: j.map(x => conv("Item", x)) } : (Object.keys(j).length === 1 && typeof Object.values(j)[0] === "object" ? conv(Object.keys(j)[0], Object.values(j)[0]) : conv("Response", j));
+  }
+  const doc = new DOMParser().parseFromString(text.slice(Math.max(0, text.indexOf("<"))), "application/xml");
+  if (doc.getElementsByTagName("parsererror").length) return null;
+  const conv = el => ({ name: el.localName, attrs: [...el.attributes].filter(a => !/^(xmlns|version$)/.test(a.name)).map(a => [a.name, a.value]), text: el.children.length ? "" : el.textContent.trim(), kids: [...el.children].map(conv) });
+  return conv(doc.documentElement);
+}
+const isLeaf = n => !n.kids.length;
+function groups(node){ const m = new Map(); node.kids.forEach(k => { if (!m.has(k.name)) m.set(k.name, []); m.get(k.name).push(k); }); return [...m]; }
+const isListBox = n => n.kids.length > 0 && n.kids.every(k => k.name === n.kids[0].name && !isLeaf(k));
+function shortLabel(n){
+  if (isLeaf(n)) return n.text;
+  const pick = ["name","channelName","userName","notificationMethod","eventType","id"];
+  for (const p of pick){ const k = n.kids.find(x => x.name === p && isLeaf(x) && x.text); if (k) return p === "notificationMethod" ? linkName(k.text) + (n.kids.find(x => /OutputIOPortID|videoInputID/i.test(x.name)) ? " " + n.kids.find(x => /OutputIOPortID|videoInputID/i.test(x.name)).text : "") : k.text; }
+  const f = n.kids.find(isLeaf); return f ? f.text : humanize(n.name);
+}
+function fmtDuration(s){ s = +s; const d = Math.floor(s/86400), h = Math.floor(s%86400/3600), m = Math.floor(s%3600/60); return (d ? d + "d " : "") + (d || h ? h + "h " : "") + m + "m"; }
+function fmtMB(mb){ mb = +mb; return mb >= 1048576 ? (mb/1048576).toFixed(2) + " TB" : mb >= 1024 ? (mb/1024).toFixed(1) + " GB" : mb.toFixed(0) + " MB"; }
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const GOOD = /^(ok|online|normal|active|connected|success|true|enable|enabled|on|up|recording|armed|running|idle)$/i;
+const BAD = /^(offline|error|abnormal|failed|fail|exception|uninitialized|unformatted|disconnect|disconnected|down|false|disable|disabled|off|notexist|broken|smartfailed|disarmed)$/i;
+function fmtVal(name, text, attrs){
+  const k = name || "";
+  const at = (attrs || []).filter(([a]) => !/^(xmlns)/.test(a));
+  const attrTxt = at.length ? `<span class="dim">${esc(at.map(([a,v]) => a === "opt" ? "options: " + v.split(",").join(", ") : a + " " + v).join(" · "))}</span>` : "";
+  if (text === "" || text == null) return attrTxt || `<span class="dim">—</span>`;
+  const t = String(text);
+  let out;
+  if (/^(true|false)$/i.test(t)) out = `<span class="chip ${/true/i.test(t)?"g":"n"}">${/true/i.test(t)?"Yes":"No"}</span>`;
+  else if (/capacity|freeSpace|freespace|totalSpace|usedSpace|memoryUsage|memoryAvailable|quota/i.test(k) && /^\d+(\.\d+)?$/.test(t)) out = `${fmtMB(t)} <span class="dim">(${(+t).toLocaleString()} MB)</span>`;
+  else if (/upTime|uptime/i.test(k) && /^\d+$/.test(t)) out = `${fmtDuration(t)} <span class="dim">(${t} s)</span>`;
+  else if (/Utilization|percent/i.test(k) && /^\d+(\.\d+)?$/.test(t)) out = `${t}%`;
+  else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(t)){ const m = t.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2}:\d{2})(.*)$/); out = `${+m[3]} ${MONTHS[+m[2]-1]} ${m[1]} ${m[4]}${m[5] ? ` <span class="dim">${esc(m[5])}</span>` : ""}`; }
+  else if (/^(rtsp|https?):\/\//i.test(t)) out = `<span class="mono">${esc(t)}</span>`;
+  else if ((/status|state|online|result|health|connect|enabled/i.test(k) || GOOD.test(t) || BAD.test(t)) && /^[\w-]{1,24}$/.test(t) && (GOOD.test(t) || BAD.test(t))) out = `<span class="chip ${GOOD.test(t)?"g":"r"}">${esc(t)}</span>`;
+  else if (/eventType/i.test(k)) out = `${esc(evName(t))} <span class="dim">${esc(t)}</span>`;
+  else if (/notificationMethod/i.test(k)) out = esc(linkName(t));
+  else out = esc(t);
+  return out + (attrTxt && at.some(([a]) => a === "opt") ? "<br>" + attrTxt : "");
+}
+function flatten(node, prefix = "", out = {}, depth = 0){
+  for (const [name, items] of groups(node)){
+    const key = prefix && !(humanize(name) in out) ? humanize(name) : prefix + humanize(name);
+    if (items.every(isLeaf)) out[key] = { name, vals: items.map(i => i.text), attrs: items[0].attrs };
+    else if (items.length > 1 || isListBox(items[0])) out[key] = { name, list: (items.length > 1 ? items : items[0].kids).map(shortLabel) };
+    else if (depth < 1) flatten(items[0], humanize(name) + " › ", out, depth + 1);
+    else out[key] = { name, list: [shortLabel(items[0])] };
+  }
+  return out;
+}
+function cell(c){
+  if (!c) return "";
+  if (c.list) return c.list.map(v => `<span class="chip n">${esc(v)}</span>`).join(" ");
+  return c.vals.length > 1 ? c.vals.map(v => esc(v)).join(", ") : fmtVal(c.name, c.vals[0], c.attrs);
+}
+function renderList(name, items, depth){
+  const rows = items.map(i => flatten(i));
+  const cols = []; rows.forEach(r => Object.keys(r).forEach(k => { if (!cols.includes(k)) cols.push(k); }));
+  if (cols.length <= 16 && cols.length > 0){
+    return `<div class="tw"><table class="lt"><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${cols.map(c => `<td>${cell(r[c])}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
+  }
+  return items.map((it, i) => `<details class="sec" ${depth < 1 && items.length < 6 ? "open" : ""}><summary>${esc(humanize(name))} ${esc(shortLabel(it) || i + 1)}</summary>${renderNode(it, depth + 1)}</details>`).join("");
+}
+function renderNode(node, depth = 0){
+  if (isLeaf(node)) return `<table class="kv"><tr><td>${esc(humanize(node.name))}</td><td>${fmtVal(node.name, node.text, node.attrs)}</td></tr></table>`;
+  const rows = [], blocks = [];
+  for (const [name, items] of groups(node)){
+    if (items.every(isLeaf)){
+      rows.push(`<tr><td>${esc(humanize(name))}</td><td>${items.length === 1 ? fmtVal(name, items[0].text, items[0].attrs) : items.map(i => fmtVal(name, i.text, i.attrs)).join(", ")}</td></tr>`);
+    } else if (items.length > 1){
+      blocks.push(`<div class="sec"><div class="st">${esc(humanize(name))} <span class="dim">(${items.length})</span></div>${renderList(name, items, depth)}</div>`);
+    } else {
+      const it = items[0];
+      if (isListBox(it)) blocks.push(`<div class="sec"><div class="st">${esc(humanize(it.name))} <span class="dim">(${it.kids.length})</span></div>${renderList(it.kids[0].name, it.kids, depth)}</div>`);
+      else blocks.push(`<details class="sec" ${depth < 2 ? "open" : ""}><summary>${esc(humanize(name))}</summary>${renderNode(it, depth + 1)}</details>`);
+    }
+  }
+  return (rows.length ? `<table class="kv">${rows.join("")}</table>` : "") + blocks.join("");
+}
+function readable(text, isJson){
+  if (!text.trim()) return `<div class="empty">Empty response body</div>`;
+  const tree = toTree(text, isJson);
+  if (!tree) return null;
+  if (tree.name === "ResponseStatus") return renderNode(tree);
+  const body = isListBox(tree) ? renderList(tree.kids[0].name, tree.kids, 0) : renderNode(tree);
+  return `<div class="rt">${esc(humanize(tree.name))}${isListBox(tree) ? ` <span class="dim">(${tree.kids.length})</span>` : ""}</div>${body}`;
+}
+
+// live event stream (alertStream)
+function parseAlert(xml){
+  const g = t => (xml.match(new RegExp(`<${t}>([^<]*)</${t}>`)) || [])[1] || "";
+  return { time: g("dateTime"), type: g("eventType"), state: g("eventState"), desc: g("eventDescription"), ch: g("channelID") || g("dynChannelID") || g("inputIOPortID") || g("dynInputIOPortID"), chName: g("channelName"), ip: g("ipAddress"), count: g("activePostCount"), xml };
+}
+const isHeartbeat = e => e.type === "videoloss" && e.state === "inactive";
+function renderStream(S){
+  if (tab === "raw"){ $("#rBody").innerHTML = `<pre>${hl(S.raw.slice(-60000))}</pre>`; $("#rBody").scrollTop = $("#rBody").scrollHeight; return; }
+  const ev = hideHeartbeat ? S.events.filter(e => !isHeartbeat(e)) : S.events;
+  const hb = S.events.length - S.events.filter(e => !isHeartbeat(e)).length;
+  const rows = ev.slice(0, 500).map(e => {
+    const t = e.time.match(/T(\d{2}:\d{2}:\d{2})/); const st = e.state === "active";
+    return `<tr><td class="mono">${t ? t[1] : esc(e.time)}</td><td>${esc(e.ch || "—")}${e.chName ? ` <span class="dim">${esc(e.chName)}</span>` : ""}</td><td><b>${esc(evName(e.type))}</b></td><td><span class="chip ${st ? "r" : "n"}">${st ? "ACTIVE" : esc(e.state || "—")}</span></td><td class="dim">${esc(e.desc)}</td></tr>`;
+  }).join("");
+  $("#rBody").innerHTML = `<div class="evbar"><label class="chk"><input type="checkbox" id="hbChk" ${hideHeartbeat ? "checked" : ""}> Hide heartbeats</label><span class="dim">${S.events.length} received · ${hb} heartbeat(s)</span></div>` +
+    (rows ? `<div class="tw"><table class="lt"><thead><tr><th>Time</th><th>Ch</th><th>Event</th><th>State</th><th>Description</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="empty">Listening for events… (the device sends a heartbeat every few seconds)</div>`);
+  $("#hbChk").onchange = e => { hideHeartbeat = e.target.checked; renderStream(S); };
+}
+
+function prettyJson(t){ try { return JSON.stringify(JSON.parse(t), null, 2); } catch { return t; } }
+function prettyXml(xml){
+  try {
+    const doc = new DOMParser().parseFromString(xml, "application/xml");
+    if (doc.getElementsByTagName("parsererror").length) return xml;
+    const out = [];
+    const walk = (n, d) => {
+      const ind = "  ".repeat(d);
+      const attrs = [...n.attributes].map(a => ` ${a.name}="${a.value}"`).join("");
+      const kids = [...n.childNodes].filter(k => k.nodeType === 1 || (k.nodeType === 3 && k.nodeValue.trim()));
+      if (!kids.length) out.push(`${ind}<${n.nodeName}${attrs}/>`);
+      else if (kids.length === 1 && kids[0].nodeType === 3) out.push(`${ind}<${n.nodeName}${attrs}>${kids[0].nodeValue.trim()}</${n.nodeName}>`);
+      else { out.push(`${ind}<${n.nodeName}${attrs}>`); kids.forEach(k => k.nodeType === 1 ? walk(k, d+1) : out.push(ind + "  " + k.nodeValue.trim())); out.push(`${ind}</${n.nodeName}>`); }
+    };
+    walk(doc.documentElement, 0);
+    return out.join("\n");
+  } catch { return xml; }
+}
+function hl(t){
+  return esc(t)
+    .replace(/(&lt;\/?)([\w:.-]+)((?:\s+[\w:.-]+=&quot;[^&]*&quot;)*)(\/?&gt;)/g, (m,a,n,at,b) => `${a}<span class="t">${n}</span>${at.replace(/([\w:.-]+)=(&quot;[^&]*&quot;)/g,'<span class="a">$1</span>=<span class="v">$2</span>')}${b}`)
+    .replace(/(&quot;[^&]*?&quot;)(\s*:)/g, '<span class="t">$1</span>$2');
+}
+function setBadge(xml){
+  const g = tag => (xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`)) || [])[1] || "";
+  const pills = [["ok", "Connected"], ["", g("model")], ["", g("deviceType")], ["", "FW " + g("firmwareVersion") + (g("firmwareReleasedDate") ? " (" + g("firmwareReleasedDate") + ")" : "")], ["", "S/N " + g("serialNumber")]].filter(p => p[1] && !/^(FW|S\/N) $/.test(p[1]));
+  $("#devbadge").innerHTML = pills.map(([c,t]) => `<span class="pill ${c}" title="${esc(t)}">${esc(t.length > 34 ? t.slice(0,34) + "…" : t)}</span>`).join("");
+}
+
+function pushHist(e){
+  e.time = new Date().toLocaleTimeString();
+  HIST.unshift(e); if (HIST.length > 80) HIST.pop();
+  $("#hist").innerHTML = HIST.map((h,i) => { const cls = typeof h.status === "number" ? "c" + String(h.status)[0] : "cE"; return `<div class="it" data-h="${i}"><span class="m m-${h.method}">${h.method}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.path)}</span><span class="code ${cls}">${h.status}</span><span>${h.time}</span></div>`; }).join("");
+}
+
+function confirmModal(text, code){
+  return new Promise(res => {
+    $("#mTitle").textContent = "Are you sure?"; $("#mText").textContent = text; $("#mCode").textContent = code;
+    $("#modal").style.display = "grid"; $("#mNo").focus();
+    const done = v => { $("#modal").style.display = "none"; $("#mYes").onclick = $("#mNo").onclick = null; res(v); };
+    $("#mYes").onclick = () => done(true); $("#mNo").onclick = () => done(false);
+  });
+}
+
+// ----------------------------------------------------------- profiles ---
+const CONN_IDS = ["scheme","ip","port","user"];
+function loadProfiles(){
+  const list = ls.get("hik.profiles", []);
+  $("#profiles").innerHTML = `<option value="">—</option>` + list.map((p,i) => `<option value="${i}">${esc(p.name)}</option>`).join("");
+  return list;
+}
+$("#btnSave").onclick = () => {
+  const list = ls.get("hik.profiles", []);
+  const name = ($("#devbadge").querySelector(".pill:nth-child(2)")?.textContent || "Device") + " @ " + ($("#ip").value || "?");
+  const p = { name, scheme:$("#scheme").value, ip:$("#ip").value, port:$("#port").value, user:$("#user").value, pass: $("#remember").checked ? $("#pass").value : "" };
+  const i = list.findIndex(x => x.ip === p.ip && x.port === p.port);
+  if (i >= 0) list[i] = p; else list.push(p);
+  ls.set("hik.profiles", list); loadProfiles();
+  $("#profiles").value = String(i >= 0 ? i : list.length - 1);
+};
+$("#btnDel").onclick = () => { const i = $("#profiles").value; if (i === "") return; const list = ls.get("hik.profiles", []); list.splice(+i, 1); ls.set("hik.profiles", list); loadProfiles(); };
+$("#profiles").onchange = () => {
+  const p = ls.get("hik.profiles", [])[+$("#profiles").value]; if (!p) return;
+  $("#scheme").value = p.scheme; $("#ip").value = p.ip; $("#port").value = p.port; $("#user").value = p.user; $("#pass").value = p.pass || ""; $("#remember").checked = !!p.pass;
+  $("#devbadge").innerHTML = `<span class="pill">Not connected</span>`;
+};
+
+// -------------------------------------------------------------- wiring ---
+$("#cats").onclick = e => { const b = e.target.closest("[data-cat]"); if (!b) return; closeChPop(); activeCat = b.dataset.cat; ls.set("hik.cat", activeCat); $("#search").value = ""; renderCats(); renderCmds(); };
+$("#cmds").onclick = e => { const b = e.target.closest(".cmd"); if (b) loadCmd(FLAT[+b.dataset.i]); };
+$("#search").oninput = renderCmds;
+$("#params").addEventListener("input", e => { if (e.target.id === "ptzSpeed") return; ls.set("hik.params", Object.fromEntries([...document.querySelectorAll("#params input,#params select")].map(i => [i.id, i.type === "checkbox" ? i.checked : i.value]))); renderCmds(); });
+$("#btnSend").onclick = () => { currentKind = null; send(); };
+$("#btnStop").onclick = () => aborter && aborter.abort();
+$("#pPick").onclick = openChPicker;
+addEventListener("resize", closeChPop);
+$("#body").addEventListener("keydown", e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); send(); } });
+$("#path").addEventListener("keydown", e => { if (e.key === "Enter") send(); });
+$("#btnConnect").onclick = () => { ARM.loaded = false; ARM.triggers = []; ARM.log = ""; CH.loaded = false; CH.map.clear(); closeChPop(); $("#method").value = "GET"; $("#path").value = "/ISAPI/System/deviceInfo"; $("#body").value = ""; $("#hint").textContent = ""; send(); };
+$("#ip").addEventListener("keydown", e => { if (e.key === "Enter") $("#btnConnect").click(); });
+$("#pass").addEventListener("keydown", e => { if (e.key === "Enter") $("#btnConnect").click(); });
+function setTab(t){ tab = t; ls.set("hik.tab", t); document.querySelectorAll("[data-tab]").forEach(b => b.classList.toggle("on", b.dataset.tab === t)); renderBody(); }
+document.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => setTab(b.dataset.tab));
+$("#btnWide").onclick = () => { const w = $("main").classList.toggle("wide"); ls.set("hik.wide", w); };
+$("#btnCopy").onclick = () => { const t = $("#rBody").innerText; navigator.clipboard?.writeText(t); $("#btnCopy").textContent = "Copied"; setTimeout(() => $("#btnCopy").textContent = "Copy", 1200); };
+$("#hist").onclick = e => { const it = e.target.closest("[data-h]"); if (!it) return; const h = HIST[+it.dataset.h]; $("#method").value = h.method; $("#path").value = h.path; $("#body").value = h.body || ""; currentKind = null; $("#hint").textContent = "Loaded from history. Press Send to repeat."; };
+$("#clrHist").onclick = e => { e.preventDefault(); HIST.length = 0; $("#hist").innerHTML = ""; };
+["scheme","ip","port","user"].forEach(id => $("#"+id).addEventListener("change", () => ls.set("hik.conn", Object.fromEntries(CONN_IDS.map(i => [i, $("#"+i).value])))));
+$("#scheme").addEventListener("change", () => { if (!$("#port").value || $("#port").value === "80" || $("#port").value === "443") $("#port").value = $("#scheme").value === "https" ? "443" : "80"; });
+
+// --------------------------------------------------------------- init ---
+(function init(){
+  const now = new Date(), sod = new Date(now); sod.setHours(0,0,0,0);
+  $("#pStart").value = fmtLocal(sod); $("#pEnd").value = fmtLocal(new Date(sod.getTime() + 86399000));
+  const saved = ls.get("hik.params", null);
+  if (saved) Object.entries(saved).forEach(([k,v]) => { const el = $("#"+k); if (el && !/pStart|pEnd/.test(k)) el.type === "checkbox" ? el.checked = v : el.value = v; });
+  const conn = ls.get("hik.conn", null); if (conn) CONN_IDS.forEach(i => { if (conn[i] != null) $("#"+i).value = conn[i]; });
+  loadProfiles(); renderCats(); renderCmds(); setTab(tab); if (ls.get("hik.wide", false)) $("main").classList.add("wide");
+  if (TOKEN.startsWith("__HIK")) { $("#banner").style.display = "block"; return; }
+  fetch("/api/ping", { method:"POST", headers:{ "X-Tool-Token":TOKEN } }).then(r => { if (!r.ok) throw 0; }).catch(() => $("#banner").style.display = "block");
+})();
+</script>
+</body>
+</html>
